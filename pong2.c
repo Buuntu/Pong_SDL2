@@ -55,6 +55,7 @@ bool loadMedia();
 void close_program();
 bool welcome_screen();
 int calculate_direction(int, int, struct paddle *, int, int);
+static bool multiplayer = false;
 
 SDL_Window * myWindow = NULL;           // Window to render to
 SDL_Renderer * myRenderer = NULL;       // Renderer to use
@@ -68,6 +69,7 @@ SDL_Texture * winTexture = NULL;        // Texture for winning message
 SDL_Texture * logoTexture = NULL;       // PONG logo
 SDL_Texture * option1Texture = NULL;    // Option 1 (Menu)
 SDL_Texture * option2Texture = NULL;    // Option 2 (Menu)
+SDL_Texture * option3Texture = NULL;    // Option 3 (Menu)
 SDL_Texture * score0 = NULL;            // Scoreboard options
 SDL_Texture * score1 = NULL;            
 SDL_Texture * score2 = NULL;
@@ -143,8 +145,11 @@ bool loadMedia() {
         mySurface = TTF_RenderText_Solid(menuFont, "Single Player", menuTextColor);
         option1Texture = SDL_CreateTextureFromSurface(myRenderer, mySurface);
         // Option 2
-        mySurface = TTF_RenderText_Solid(menuFont, "Quit", menuTextColor);
+        mySurface = TTF_RenderText_Solid(menuFont, "Multiplayer", menuTextColor);
         option2Texture = SDL_CreateTextureFromSurface(myRenderer, mySurface);
+        // Option 3
+        mySurface = TTF_RenderText_Solid(menuFont, "Quit", menuTextColor);
+        option3Texture = SDL_CreateTextureFromSurface(myRenderer, mySurface);
         // Scoreboard
         mySurface = TTF_RenderText_Solid(logoFont, "0", menuTextColor);
         score0 = SDL_CreateTextureFromSurface(myRenderer, mySurface);
@@ -334,6 +339,7 @@ void close_program() {
         logoTexture = NULL;
         option1Texture = NULL;
         option2Texture = NULL;
+        option3Texture = NULL;
         score0 = NULL;
         score1 = NULL;
         score2 = NULL;
@@ -351,6 +357,7 @@ void close_program() {
         SDL_DestroyTexture(logoTexture);
         SDL_DestroyTexture(option1Texture);
         SDL_DestroyTexture(option2Texture);
+        SDL_DestroyTexture(option3Texture);
         SDL_DestroyTexture(score0);
         SDL_DestroyTexture(score1);
         SDL_DestroyTexture(score2);
@@ -384,6 +391,16 @@ bool welcome_screen() {
                 else if (menu_option == 1) {
                     if (event.key.keysym.sym == SDLK_UP)
                         menu_option = 0;
+                    else if (event.key.keysym.sym == SDLK_DOWN)
+                        menu_option = 2;
+                    else if (event.key.keysym.sym == SDLK_RETURN) {
+                        multiplayer = true;
+                        quit = true;
+                    }
+                }
+                else if (menu_option == 2) {
+                    if (event.key.keysym.sym == SDLK_UP)
+                        menu_option = 1;
                     else if (event.key.keysym.sym == SDLK_RETURN) {
                         quit = true;
                         not_exit = false;
@@ -408,12 +425,19 @@ bool welcome_screen() {
             SDL_RenderFillRect(myRenderer, &menuHighlight1);
         SDL_RenderCopy(myRenderer, option1Texture, NULL, &option1Rect);
 
-        // 'Quit' option
-        SDL_Rect option2Rect = { SCREEN_WIDTH / 2 - 50, SCREEN_HEIGHT / 2 + 80, 100, 40 };
+        // 'Multiplayer' option
+        SDL_Rect option2Rect = { SCREEN_WIDTH / 2 - 130, SCREEN_HEIGHT / 2 + 80, 260, 40 };
         SDL_Rect menuHighlight2 = { SCREEN_WIDTH / 2 - 170, SCREEN_HEIGHT / 2 + 80, 340, 40};
         if (menu_option == 1)
             SDL_RenderFillRect(myRenderer, &menuHighlight2);
         SDL_RenderCopy(myRenderer, option2Texture, NULL, &option2Rect);
+
+        // 'Quit' option
+        SDL_Rect option3Rect = { SCREEN_WIDTH / 2 - 50, SCREEN_HEIGHT / 2 + 140, 100, 40 };
+        SDL_Rect menuHighlight3 = { SCREEN_WIDTH / 2 - 170, SCREEN_HEIGHT / 2 + 140, 340, 40};
+        if (menu_option == 2)
+            SDL_RenderFillRect(myRenderer, &menuHighlight3);
+        SDL_RenderCopy(myRenderer, option3Texture, NULL, &option3Rect);
 
         // Draw screen:
         SDL_RenderPresent(myRenderer);
@@ -452,6 +476,8 @@ int main(void)
         if (!welcome_screen())
             quit = true;
 
+        if (multiplayer)
+            oppo_paddle.vel = PAD_VEL;
 
         SDL_Event event;
         const Uint8 * keys = SDL_GetKeyboardState(NULL);
@@ -473,8 +499,10 @@ int main(void)
                     have_lost = true;;
                     endTime = SDL_GetTicks();
                 }
-                else 
+                else {
+                    startTime = SDL_GetTicks();
                     someoneScored = true;
+                }
             }
             else if (won(&oppo_paddle, &gameball)) {
                 // Increment score and check if you've won
@@ -482,32 +510,44 @@ int main(void)
                     have_won = true;
                     endTime = SDL_GetTicks();
                 }
-                else 
+                else {
+                    startTime = SDL_GetTicks();
                     someoneScored = true;
+                }
             }
 
             // Move left paddle
             if (!have_lost && !have_won && (SDL_GetTicks() - startTime > 1500) ) {
-                if (keys[SDL_SCANCODE_UP])
+                if (keys[SDL_SCANCODE_W])
                     move_paddle(&gamepaddle, UP);
-                else if (keys[SDL_SCANCODE_DOWN])
+                else if (keys[SDL_SCANCODE_S])
                     move_paddle(&gamepaddle, DOWN);
 
-                if (gameball.direction < 2) // SOUTH_WEST or NORTH_WEST
-                    AI_calculated = false;
-                else if (gameball.direction > 1) { // NE or SE
-                    if (!AI_calculated) {
-                        dir = calculate_direction(gameball.x, gameball.y, &oppo_paddle, gameball.radius, gameball.direction);
+                if (multiplayer) {  // If it's two player
+                    if (keys[SDL_SCANCODE_UP])
+                        move_paddle(&oppo_paddle, UP);
+                    else if (keys[SDL_SCANCODE_DOWN])
+                        move_paddle(&oppo_paddle, DOWN);
+                }
+                else {              // versus an AI
+                    
+                    if (gameball.direction < 2) // SOUTH_WEST or NORTH_WEST
+                        AI_calculated = false;
+                    else if (gameball.direction > 1) { // NE or SE
+                        if (!AI_calculated) {
+                            dir = calculate_direction(gameball.x, gameball.y, &oppo_paddle, gameball.radius, gameball.direction);
 
-                        AI_calculated = true;
+                            AI_calculated = true;
+                        }
+
+                        if (gameball.x >= SCREEN_WIDTH / 5) { 
+                            if (dir > (oppo_paddle.y + (PAD_HEIGHT / 2)  + BALL_VEL - 1))
+                                move_paddle(&oppo_paddle, DOWN);
+                            else if (dir < (oppo_paddle.y + (PAD_HEIGHT / 2) - BALL_VEL - 1))
+                                move_paddle(&oppo_paddle, UP);
+                        }
                     }
 
-                    if (gameball.x >= SCREEN_WIDTH / 5) { 
-                        if (dir > (oppo_paddle.y + (PAD_HEIGHT / 2)  + BALL_VEL - 1))
-                            move_paddle(&oppo_paddle, DOWN);
-                        else if (dir < (oppo_paddle.y + (PAD_HEIGHT / 2) - BALL_VEL - 1))
-                            move_paddle(&oppo_paddle, UP);
-                    }
                 }
 
                 // Move ball
@@ -547,12 +587,13 @@ int main(void)
             filledCircleRGBA(myRenderer, gameball.x, gameball.y, gameball.radius, 0x00, 0x99, 0xFF, 0xFF);
 
             if (someoneScored) {
-                gameball.x = SCREEN_WIDTH / 2;
-                gameball.y = SCREEN_HEIGHT / 2;
-                gamepaddle.y = SCREEN_HEIGHT / 2 - (PAD_HEIGHT / 2);
-                oppo_paddle.y = SCREEN_HEIGHT / 2 - (PAD_HEIGHT / 2);
-                startTime = SDL_GetTicks();
-                someoneScored = false;
+                if (SDL_GetTicks() - startTime > 200) {
+                    gameball.x = SCREEN_WIDTH / 2;
+                    gameball.y = SCREEN_HEIGHT / 2;
+                    gamepaddle.y = SCREEN_HEIGHT / 2 - (PAD_HEIGHT / 2);
+                    oppo_paddle.y = SCREEN_HEIGHT / 2 - (PAD_HEIGHT / 2);
+                    someoneScored = false;
+                }
             }
 
             // Draw scoreboard
