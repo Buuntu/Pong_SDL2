@@ -249,7 +249,6 @@ bool lost(struct paddle * gamepad, struct ball * gameball) {
 }
 
 int calculate_direction(int ballx, int bally, struct paddle * pad, int radius, int dir) {
-    
     int pad_destination;   // Value to return: y-value of where the paddle should be
 
     int y = SCREEN_HEIGHT - bally; // y value = -y (coordinate system flipped on y axis)
@@ -260,32 +259,28 @@ int calculate_direction(int ballx, int bally, struct paddle * pad, int radius, i
     else
         b = y - (ballx * m);    // y = mx + b where m = 1
 
-    int x_intersect = b * m * -1;
-    //printf ("x_intersect: %d\n", x_intersect);
-
-    if (x_intersect >= SCREEN_WIDTH) {
-        y = m * (SCREEN_WIDTH - radius) + b;
-        pad_destination = SCREEN_HEIGHT - y;
-    }
-    else if (dir == NORTH_EAST) {
-        // y = mx + b
-        int new_x = ((SCREEN_HEIGHT - radius) - b ) / m;
-        pad_destination = calculate_direction(new_x, 0 + radius, pad, radius, SOUTH_EAST);
+    if (dir == NORTH_EAST) {
+        // y-value at x = SCREEN_WIDTH
+        int y_edge = m * (SCREEN_WIDTH - radius) + b;
+        if (y_edge >= 0 && y_edge <= SCREEN_HEIGHT)
+            pad_destination = SCREEN_HEIGHT - y_edge;
+        else {
+            int new_x = ((SCREEN_HEIGHT - radius) - b ) / m;
+            pad_destination = calculate_direction(new_x, radius, pad, radius, SOUTH_EAST);
+        }
     }
     else if (dir == SOUTH_EAST) {
-        pad_destination = calculate_direction(x_intersect - radius, SCREEN_HEIGHT - radius, pad, radius, NORTH_EAST);
+        int x_intersect = b * m * -1;
+        // If the ball will reach the edge of the screen
+        if (x_intersect >= SCREEN_WIDTH - radius) {
+            y = m * (SCREEN_WIDTH - radius) + b;
+            pad_destination = SCREEN_HEIGHT - y;
+        }
+        else 
+            pad_destination = calculate_direction(x_intersect - radius, SCREEN_HEIGHT - radius, pad, radius, NORTH_EAST);
     }
 
     return pad_destination;
-    // y = SCREEN_HEIGHT - actualY
-    // m = 1
-    // point at which y = SCREEN_HEIGHT?
-    // then y = -1/y
-    // point at which x = SCREEN_WIDTH?
-    // compare that point to the y value at pad
-    // return UP if pad.y + (pad.height / 2) > expected y value
-    // return DOWN if pad.y + (pad.height / 2) < expected y value
-    // return -1 if paddle is already there; do nothing
 }
 
 void close_program() {
@@ -430,14 +425,13 @@ int main(void)
                         dir = calculate_direction(gameball.x, gameball.y, &oppo_paddle, gameball.radius, gameball.direction);
 
                         AI_calculated = true;
-                        printf("paddle should go to y = %d\n", dir);
                     }
                     
                     /*printf("dir = %d\n", dir);
                     printf("oppo_paddle.y + BALL_VEL - 1 = %d\n", oppo_paddle.y + BALL_VEL - 1);*/
-                    if (dir > (oppo_paddle.y + BALL_VEL - 1))
+                    if (dir > (oppo_paddle.y + (PAD_HEIGHT / 2)  + BALL_VEL - 1))
                         move_paddle(&oppo_paddle, DOWN);
-                    else if (dir < (oppo_paddle.y - BALL_VEL - 1))
+                    else if (dir < (oppo_paddle.y + (PAD_HEIGHT / 2) - BALL_VEL - 1))
                         move_paddle(&oppo_paddle, UP);
                 }
 
