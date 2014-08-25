@@ -50,6 +50,7 @@ void move_paddle(struct paddle *, unsigned char);
 void move_ball(struct ball *, struct paddle *);
 bool initScr();
 bool lost(struct paddle *, struct ball *);
+bool won(struct paddle *, struct ball *);
 bool loadMedia();
 void close_program();
 bool welcome_screen();
@@ -62,10 +63,15 @@ TTF_Font * myFont = NULL;               // TTF font pointer
 TTF_Font * logoFont = NULL;             // Font for game title
 TTF_Font * menuFont = NULL;             // Font for menu options
 SDL_Surface * mySurface = NULL;         // Surface for font
-SDL_Texture * loseTexture = NULL;       // Texture for font
+SDL_Texture * loseTexture = NULL;       // Texture for losing message
+SDL_Texture * winTexture = NULL;        // Texture for winning message
 SDL_Texture * logoTexture = NULL;       // PONG logo
 SDL_Texture * option1Texture = NULL;    // Option 1 (Menu)
 SDL_Texture * option2Texture = NULL;    // Option 2 (Menu)
+SDL_Texture * score0 = NULL;            // Scoreboard options
+SDL_Texture * score1 = NULL;            
+SDL_Texture * score2 = NULL;
+SDL_Texture * score3 = NULL;
 
 bool initScr() {
     // Initialization flag
@@ -124,6 +130,8 @@ bool loadMedia() {
         SDL_Color textColor = { 255, 255, 255 };
         mySurface = TTF_RenderText_Solid(myFont, "You lose...", textColor);
         loseTexture = SDL_CreateTextureFromSurface(myRenderer,mySurface);
+        mySurface = TTF_RenderText_Solid(myFont, "You win...", textColor);
+        winTexture = SDL_CreateTextureFromSurface(myRenderer,mySurface);
 
         // Render logo
         SDL_Color logoTextColor = { 0x00, 0xCC, 0x00 };
@@ -137,6 +145,16 @@ bool loadMedia() {
         // Option 2
         mySurface = TTF_RenderText_Solid(menuFont, "Quit", menuTextColor);
         option2Texture = SDL_CreateTextureFromSurface(myRenderer, mySurface);
+        // Scoreboard
+        mySurface = TTF_RenderText_Solid(logoFont, "0", menuTextColor);
+        score0 = SDL_CreateTextureFromSurface(myRenderer, mySurface);
+        mySurface = TTF_RenderText_Solid(logoFont, "1", menuTextColor);
+        score1 = SDL_CreateTextureFromSurface(myRenderer, mySurface);
+        mySurface = TTF_RenderText_Solid(logoFont, "2", menuTextColor);
+        score2 = SDL_CreateTextureFromSurface(myRenderer, mySurface);
+        mySurface = TTF_RenderText_Solid(logoFont, "3", menuTextColor);
+        score3 = SDL_CreateTextureFromSurface(myRenderer, mySurface);
+
     }
 
     return success;
@@ -237,16 +255,39 @@ bool lost(struct paddle * gamepad, struct ball * gameball) {
         if ((gamepad->y > (gameball->y + gameball->radius)) || 
             (gamepad->y + gamepad->height) < (gameball->y - gameball->radius)) {
             gameball->x -= gamepad->width;
-            if (gameball->direction == NORTH_EAST || gameball->direction == NORTH_WEST)
+            if (gameball->direction ==  NORTH_EAST) {
                 gameball->y -= gamepad->width;
-            else
+                return true;
+            }
+            else if (gameball->direction == SOUTH_EAST) {
                 gameball->y += gamepad->width;
-            return true;
+                return true;
+            }
         }
     }
 
     return false;
 }
+
+bool won(struct paddle * gamepad, struct ball * gameball) {
+    if (gameball->x == SCREEN_WIDTH - (gamepad->width + gameball->radius)) {
+        if ((gamepad->y > (gameball->y + gameball->radius)) ||
+            (gamepad->y + gamepad->height) < (gameball->y - gameball->radius)) {
+            gameball->x += gamepad->width;
+            if (gameball->direction == NORTH_WEST) {
+                gameball->y -= gamepad->width;
+                return true;
+            }
+            else if (gameball->direction == SOUTH_WEST) {
+                gameball->y += gamepad->width;
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
 
 int calculate_direction(int ballx, int bally, struct paddle * pad, int radius, int dir) {
     int pad_destination;   // Value to return: y-value of where the paddle should be
@@ -284,6 +325,7 @@ int calculate_direction(int ballx, int bally, struct paddle * pad, int radius, i
 }
 
 void close_program() {
+        // Free pointers
         myWindow = NULL;
         myRenderer = NULL;
         myFont = NULL;
@@ -292,18 +334,27 @@ void close_program() {
         logoTexture = NULL;
         option1Texture = NULL;
         option2Texture = NULL;
+        score0 = NULL;
+        score1 = NULL;
+        score2 = NULL;
+        score3 = NULL;
 
+        // Free SDL_ttf objects
         TTF_CloseFont(myFont);
         TTF_CloseFont(logoFont);
         TTF_Quit();
 
+        // Free SDL objects
         SDL_DestroyWindow(myWindow);
         SDL_DestroyRenderer(myRenderer);
         SDL_DestroyTexture(loseTexture);
         SDL_DestroyTexture(logoTexture);
         SDL_DestroyTexture(option1Texture);
         SDL_DestroyTexture(option2Texture);
-
+        SDL_DestroyTexture(score0);
+        SDL_DestroyTexture(score1);
+        SDL_DestroyTexture(score2);
+        SDL_DestroyTexture(score3);
         SDL_FreeSurface(mySurface);
 
         SDL_Quit();
@@ -384,15 +435,19 @@ int main(void)
         struct paddle gamepaddle = { 
             SCREEN_HEIGHT / 2 - 30, 10, 80, PAD_VEL};
         struct paddle oppo_paddle = { 
-            SCREEN_HEIGHT / 2 - 40, PAD_WIDTH, PAD_HEIGHT, PAD_VEL};
+            SCREEN_HEIGHT / 2 - 40, PAD_WIDTH, PAD_HEIGHT, PAD_VEL / 2};
         struct ball gameball = { 
             SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 , 15, BALL_VEL, rand() % 2};
 
         bool quit = false;
         bool have_lost = false;
-        unsigned int timer = 1;         // To randomize opponent's movements
-        unsigned int dir = -1;  // Direction of opponent's movements
+        bool have_won = false;
+        unsigned int dir;   // Direction of opponent's movements
         bool AI_calculated = false;
+        int frameNum = 0;   // To control computer's movements
+        int leftScore = 0;
+        int rightScore = 0;
+        bool someoneScored = false;
 
         if (!welcome_screen())
             quit = true;
@@ -402,7 +457,7 @@ int main(void)
         const Uint8 * keys = SDL_GetKeyboardState(NULL);
 
         unsigned int startTime = SDL_GetTicks();
-        unsigned int lossTime;
+        unsigned int endTime;
         while (!quit) {
             // Handles events on queue
             while (SDL_PollEvent(&event) != 0) {
@@ -411,28 +466,48 @@ int main(void)
                     quit = true;
             }
 
+            // Check if you've won or lost
+            if (lost(&gamepaddle, &gameball)) {
+                // Increment score and check if you've lost
+                if (++rightScore == 3) {
+                    have_lost = true;;
+                    endTime = SDL_GetTicks();
+                }
+                else 
+                    someoneScored = true;
+            }
+            else if (won(&oppo_paddle, &gameball)) {
+                // Increment score and check if you've won
+                if (++leftScore == 3) {
+                    have_won = true;
+                    endTime = SDL_GetTicks();
+                }
+                else 
+                    someoneScored = true;
+            }
+
             // Move left paddle
-            if (!have_lost && (SDL_GetTicks() - startTime > 1500) ) {
+            if (!have_lost && !have_won && (SDL_GetTicks() - startTime > 1500) ) {
                 if (keys[SDL_SCANCODE_UP])
                     move_paddle(&gamepaddle, UP);
                 else if (keys[SDL_SCANCODE_DOWN])
                     move_paddle(&gamepaddle, DOWN);
 
-                if (gameball.direction == NORTH_WEST || gameball.direction == SOUTH_WEST)
+                if (gameball.direction < 2) // SOUTH_WEST or NORTH_WEST
                     AI_calculated = false;
-                else if (gameball.direction == NORTH_EAST || gameball.direction == SOUTH_EAST) {
+                else if (gameball.direction > 1) { // NE or SE
                     if (!AI_calculated) {
                         dir = calculate_direction(gameball.x, gameball.y, &oppo_paddle, gameball.radius, gameball.direction);
 
                         AI_calculated = true;
                     }
-                    
-                    /*printf("dir = %d\n", dir);
-                    printf("oppo_paddle.y + BALL_VEL - 1 = %d\n", oppo_paddle.y + BALL_VEL - 1);*/
-                    if (dir > (oppo_paddle.y + (PAD_HEIGHT / 2)  + BALL_VEL - 1))
-                        move_paddle(&oppo_paddle, DOWN);
-                    else if (dir < (oppo_paddle.y + (PAD_HEIGHT / 2) - BALL_VEL - 1))
-                        move_paddle(&oppo_paddle, UP);
+
+                    if (gameball.x >= SCREEN_WIDTH / 5) { 
+                        if (dir > (oppo_paddle.y + (PAD_HEIGHT / 2)  + BALL_VEL - 1))
+                            move_paddle(&oppo_paddle, DOWN);
+                        else if (dir < (oppo_paddle.y + (PAD_HEIGHT / 2) - BALL_VEL - 1))
+                            move_paddle(&oppo_paddle, UP);
+                    }
                 }
 
                 // Move ball
@@ -450,15 +525,13 @@ int main(void)
                 if (i % 30 < 15)
                     SDL_RenderDrawPoint(myRenderer, SCREEN_WIDTH / 2, i);
 
-            // Draw message if you've lost
-            if (have_lost || lost(&gamepaddle, &gameball)) {
-                SDL_Rect center = { SCREEN_WIDTH / 2 - 75, SCREEN_HEIGHT / 2 - 25, 150, 50};
+
+            SDL_Rect center = { SCREEN_WIDTH / 2 - 75, SCREEN_HEIGHT / 2 - 25, 150, 50};
+            // Draw win or lose message
+            if (have_won)
+                SDL_RenderCopy(myRenderer, winTexture, NULL, &center);
+            else if (have_lost)
                 SDL_RenderCopy(myRenderer, loseTexture, NULL, &center);
-                if (!have_lost) {
-                    have_lost = true;
-                    lossTime = SDL_GetTicks();
-                }
-            }
 
             // Draw left paddle
             SDL_Rect leftPaddle = { 0, gamepaddle.y, gamepaddle.width, gamepaddle.height };
@@ -473,11 +546,55 @@ int main(void)
             // Draw circle
             filledCircleRGBA(myRenderer, gameball.x, gameball.y, gameball.radius, 0x00, 0x99, 0xFF, 0xFF);
 
+            if (someoneScored) {
+                gameball.x = SCREEN_WIDTH / 2;
+                gameball.y = SCREEN_HEIGHT / 2;
+                gamepaddle.y = SCREEN_HEIGHT / 2 - (PAD_HEIGHT / 2);
+                oppo_paddle.y = SCREEN_HEIGHT / 2 - (PAD_HEIGHT / 2);
+                startTime = SDL_GetTicks();
+                someoneScored = false;
+            }
+
+            // Draw scoreboard
+            SDL_Rect rightScoreRect = { (SCREEN_WIDTH/2) + 10, 20, 20, 50 };
+            SDL_Rect leftScoreRect = { (SCREEN_WIDTH/2) - 30, 20, 20, 50 };
+            SDL_SetRenderDrawColor(myRenderer, 0x00, 0x33, 0x00, 0x99);
+            switch (leftScore) {
+                case 0:
+                    SDL_RenderCopy(myRenderer, score0, NULL, &leftScoreRect);
+                    break;
+                case 1:
+                    SDL_RenderCopy(myRenderer, score1, NULL, &leftScoreRect);
+                    break;
+                case 2:
+                    SDL_RenderCopy(myRenderer, score2, NULL, &leftScoreRect);
+                    break;
+                case 3:
+                    SDL_RenderCopy(myRenderer, score3, NULL, &leftScoreRect);
+                    break;
+            }
+
+            switch(rightScore) {
+                case 0:
+                    SDL_RenderCopy(myRenderer, score0, NULL, &rightScoreRect);
+                    break;
+                case 1:
+                    SDL_RenderCopy(myRenderer, score1, NULL, &rightScoreRect);
+                    break;
+                case 2:
+                    SDL_RenderCopy(myRenderer, score2, NULL, &rightScoreRect);
+                    break;
+                case 3:
+                    SDL_RenderCopy(myRenderer, score3, NULL, &rightScoreRect);
+                    break;
+            }
+
+
             // Draw screen:
             SDL_RenderPresent(myRenderer);
 
             // Exit if lost and 2.5 seconds have passed
-            if (have_lost && (SDL_GetTicks() - lossTime > 2500)) 
+            if ((have_lost || have_won) && (SDL_GetTicks() - endTime > 2500)) 
                 quit = true;
         }
 
