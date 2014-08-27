@@ -3,7 +3,6 @@ Pong_SDL2
 
 Pong written in C using SDL 2.0 and extensions.
 
-###Controls:
 ========
 ####Player 1:
   * W - Move paddle up
