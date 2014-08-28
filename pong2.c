@@ -1,5 +1,5 @@
 /*                                                  //
-   SUPER Pong (c) 2014
+   Pong 2.0 (c) 2014
    Written by Gabriel Abud (gabriel.jabud@gmail.com)
    Requires SDL 2.0 and extensions:
    SDL2_ttf and SDL2_gfxPrimitives
@@ -68,7 +68,7 @@ bool loadMedia() {
     }
     else {
         // Render text
-        SDL_Color textColor = { 0x99, 0x99, 0x66 };
+        SDL_Color textColor = { 0x99, 0x99, 0x66 , 0xFF};
         mySurface = TTF_RenderText_Solid(myFont, "You lose...", textColor);
         loseTexture = SDL_CreateTextureFromSurface(myRenderer,mySurface);
         mySurface = TTF_RenderText_Solid(myFont, "You win!", textColor);
@@ -79,12 +79,12 @@ bool loadMedia() {
         player2Wins = SDL_CreateTextureFromSurface(myRenderer, mySurface);
 
         // Render logo
-        SDL_Color logoTextColor = { 0x00, 0xCC, 0x00 };
+        SDL_Color logoTextColor = { 0x00, 0xCC, 0x00 , 0xFF };
         mySurface = TTF_RenderText_Solid(logoFont, "PONG 2.0", logoTextColor);
         logoTexture = SDL_CreateTextureFromSurface(myRenderer, mySurface);
 
         // Option 1
-        SDL_Color menuTextColor = { 0x99, 0x99, 0x66 };
+        SDL_Color menuTextColor = { 0x99, 0x99, 0x66 , 0xFF };
         mySurface = TTF_RenderText_Solid(menuFont, "Single Player", menuTextColor);
         option1Texture = SDL_CreateTextureFromSurface(myRenderer, mySurface);
         // Option 2
@@ -449,45 +449,60 @@ void start_animation(bool * not_exit, bool * quit) {
 
         int runningTime = SDL_GetTicks();
         if (runningTime - startTime < 400) {
-           SDL_Rect letters = { SCREEN_WIDTH / 2 - 200, SCREEN_HEIGHT / 4 - 100, 400, 120 };
+            letters.x = SCREEN_WIDTH / 2 - 200;
+            letters.y = SCREEN_HEIGHT / 4 - 100;
+            letters.w = 400;
+            letters.h = 120;
         }
         else if (runningTime - startTime < 800) {
             if (!sound_played[1]) {
                 Mix_PlayChannel(-1, typingSound, 0);
                 sound_played[1] = true;
             }
-            SDL_Rect letters = { SCREEN_WIDTH / 2 - 140, SCREEN_HEIGHT / 4 - 100, 340, 120 };
+            letters.x = SCREEN_WIDTH / 2 - 140;
+            letters.y = SCREEN_HEIGHT / 4 - 100;
+            letters.w = 340;
+            letters.h = 120;
         }
         else if (runningTime - startTime < 1200) {
             if (!sound_played[2]) {
                 Mix_PlayChannel(-1, typingSound, 0);
                 sound_played[2] = true;
             }
-            SDL_Rect letters = { SCREEN_WIDTH / 2 - 80, SCREEN_HEIGHT / 4 - 100, 280, 120 };
+            letters.x = SCREEN_WIDTH / 2 - 80;
+            letters.y = SCREEN_HEIGHT / 4 - 100;
+            letters.w = 280;
+            letters.h = 120;
         }
         else if (runningTime - startTime < 1600) {
             if (!sound_played[3]) {
                 Mix_PlayChannel(-1, typingSound, 0);
                 sound_played[3] = true;
             }
-
-            SDL_Rect letters = { SCREEN_WIDTH / 2 - 20, SCREEN_HEIGHT / 4 - 100, 220, 120 };
+            letters.x = SCREEN_WIDTH / 2 - 20;
+            letters.y = SCREEN_HEIGHT / 4 - 100;
+            letters.w = 220;
+            letters.h = 120;
         }
         else if (runningTime - startTime < 2000) {
             if (!sound_played[4]) {
                 Mix_PlayChannel(-1, typingSound, 0);
                 sound_played[4] = true;
             }
-
-            SDL_Rect letters = { SCREEN_WIDTH / 2 + 40, SCREEN_HEIGHT / 4 - 100, 160, 120 };
+            letters.x = SCREEN_WIDTH / 2 + 40;
+            letters.y = SCREEN_HEIGHT / 4 - 100;
+            letters.w = 160;
+            letters.h = 120;
         }
         else if (runningTime - startTime < 2500) {
             if (!sound_played[5]) {
                 Mix_PlayChannel(-1, typingSound, 0);
                 sound_played[5] = true;
             }
-
-            SDL_Rect letters = { 0, 0, 0, 0 };
+            letters.x = 0;
+            letters.y = 0;
+            letters.w = 0;
+            letters.h = 0;
         }
         SDL_RenderFillRect(myRenderer, &letters);
         
@@ -496,6 +511,9 @@ void start_animation(bool * not_exit, bool * quit) {
         if (runningTime - startTime > 2500)
             end = true;
     }
+}
+
+void replay() {
 }
 
 int main(void)
@@ -513,14 +531,13 @@ int main(void)
         struct paddle oppo_paddle = { 
             SCREEN_HEIGHT / 2 - 40, PAD_WIDTH, PAD_HEIGHT, PAD_VEL / 2};
         struct ball gameball = { 
-            SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 , 15, BALL_VEL, rand() % 2};
+            SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 , 15, BALL_VEL, rand() % 4};
 
         bool quit = false;
         bool have_lost = false;
         bool have_won = false;
-        unsigned int dir;   // Direction of opponent's movements
+        int dir;   // Direction of opponent's movements
         bool AI_calculated = false;
-        int frameNum = 0;   // To control computer's movements
         int leftScore = 0;
         int rightScore = 0;
         bool someoneScored = false;

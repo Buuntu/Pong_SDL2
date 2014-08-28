@@ -1,6 +1,8 @@
 #ifndef PONG2_H
 #define PONG2_H
 
+// THis is a test
+
 #include <SDL2/SDL.h>
 #include <SDL2/SDL2_gfxPrimitives.h>
 #include <SDL2/SDL_ttf.h>
@@ -55,6 +57,7 @@ bool loadMedia();                           // Load all of the media for the gam
 void close_program();                       // Free all pointers and exit
 bool welcome_screen();                      // Main menu
 void start_animation(bool *, bool *);       // Logo animation
+void replay_menu();                         // Menu after win/loss
 int calculate_direction(int, int, struct paddle *, int, int);
 static bool multiplayer = false;
 

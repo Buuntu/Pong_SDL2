@@ -1,3 +1,16 @@
-pong: pong2.c ; gcc pong2.c -lSDL2 -lSDL2_gfx -lSDL2_ttf -lSDL2_mixer -o pong
-debug: pong2.c ; gcc pong2.c -g -lSDL2 -lSDL2_gfx -lSDL2_ttf -o pong
-clean:  ; rm pong
+CC=gcc
+CFLAGS=-Wall -std=c99 -pedantic -Wextra -lSDL2 -lSDL2_gfx -lSDL2_ttf -lSDL2_mixer
+DEPS=pong2.h
+OBJ = pong2.o
+
+%.o: %.c $(DEPS) 
+	$(CC) -c -o $@ $< $(CFLAGS)
+
+pong: $(OBJ)
+	$(CC) -o $@ $^ $(CFLAGS) 
+
+debug: pong2.c 
+	$(CC) -o $@ $^ $(CFLAGS) -g 
+
+clean:  
+	rm pong pong2.o
