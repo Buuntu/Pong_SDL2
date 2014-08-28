@@ -4,87 +4,10 @@
    Requires SDL 2.0 and extensions:
    SDL2_ttf and SDL2_gfxPrimitives
 
-   Latest Changes: 08/24/2014                       
+   Latest Changes: 08/27/2014                       
 //                                                  */
 
-#include <SDL2/SDL2_gfxPrimitives.h>
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_ttf.h>
-#include <SDL2/SDL_mixer.h>
-#include <stdio.h>
-#include <time.h>
-#include <stdlib.h>
-
-#define SCREEN_WIDTH 840
-#define SCREEN_HEIGHT 540
-#define BALL_VEL 8
-#define PAD_VEL 10
-#define PAD_WIDTH 10
-#define PAD_HEIGHT 80
-
-char FONT[] = "Fonts/Square.ttf";
-char FONT2[] = "Fonts/robotastic.ttf";
-
-char hit_sound[] = "Sounds/hit.wav";
-char scroll_sound[] = "Sounds/switch.wav";
-char enter_sound[] = "Sounds/enter.wav";
-
-typedef int bool;
-enum { false, true };
-enum { UP, DOWN, RIGHT, LEFT };
-enum { SOUTH_WEST, NORTH_WEST, SOUTH_EAST, NORTH_EAST };
-
-struct paddle
-{
-	int y;	/* yvalue for the paddle */
-    int width;
-    int height;
-    int vel;
-};
-
-struct ball 
-{
-	int x,y;
-    int radius;
-    int vel;
-    int direction;
-};
-
-/* Function Prototypes */
-void move_paddle(struct paddle *, unsigned char);
-void move_ball(struct ball *, struct paddle *);
-bool initScr();
-bool lost(struct paddle *, struct ball *);
-bool won(struct paddle *, struct ball *);
-bool loadMedia();
-void close_program();
-bool welcome_screen();
-int calculate_direction(int, int, struct paddle *, int, int);
-static bool multiplayer = false;
-
-SDL_Window * myWindow = NULL;           // Window to render to
-SDL_Renderer * myRenderer = NULL;       // Renderer to use
-SDL_Surface * myXout = NULL;            // Exit button
-TTF_Font * myFont = NULL;               // TTF font pointer
-TTF_Font * logoFont = NULL;             // Font for game title
-TTF_Font * menuFont = NULL;             // Font for menu options
-SDL_Surface * mySurface = NULL;         // Surface for font
-SDL_Texture * loseTexture = NULL;       // Texture for losing message
-SDL_Texture * player1Wins = NULL;       // Texture for player 1 win
-SDL_Texture * player2Wins = NULL;       // Texture for player 2 win
-SDL_Texture * winTexture = NULL;        // Texture for winning message
-SDL_Texture * logoTexture = NULL;       // PONG logo
-SDL_Texture * option1Texture = NULL;    // Option 1 (Menu)
-SDL_Texture * option2Texture = NULL;    // Option 2 (Menu)
-SDL_Texture * option3Texture = NULL;    // Option 3 (Menu)
-SDL_Texture * score0 = NULL;            // Scoreboard options
-SDL_Texture * score1 = NULL;            
-SDL_Texture * score2 = NULL;
-SDL_Texture * score3 = NULL;
-// Sound effects
-Mix_Chunk *scrollSound = NULL;
-Mix_Chunk *enterSound = NULL;
-Mix_Chunk *paddleSound = NULL;
+#include "pong2.h"
 
 bool initScr() {
     // Initialization flag
@@ -186,7 +109,8 @@ bool loadMedia() {
     scrollSound = Mix_LoadWAV(scroll_sound);
     enterSound = Mix_LoadWAV(enter_sound);
     paddleSound = Mix_LoadWAV(hit_sound);
-    if (scrollSound == NULL || enterSound == NULL || paddleSound == NULL) {
+    typingSound = Mix_LoadWAV(type_sound);
+    if (scrollSound == NULL || enterSound == NULL || paddleSound == NULL || typingSound == NULL) {
         printf("Failed to load sound effects! SDL_mixer Error: %s\n", Mix_GetError());
         success = false;
     }
@@ -407,6 +331,8 @@ bool welcome_screen() {
     bool not_exit = true;
     unsigned int menu_option = 0;
 
+    start_animation(&not_exit, &quit);
+
     while (!quit) {
         // Handle events
         while (SDL_PollEvent(&event) != 0) {
@@ -489,6 +415,87 @@ bool welcome_screen() {
     }
 
     return not_exit;
+}
+
+void start_animation(bool * not_exit, bool * quit) {
+
+    SDL_Event event;
+
+    unsigned int startTime = SDL_GetTicks();
+
+    bool end = false;
+    bool sound_played[5] = { false, false, false, false, false };
+
+    while (! end) {
+        // Handles exiting 
+        while (SDL_PollEvent(&event) != 0) {
+            if (event.type == SDL_QUIT) {
+                *quit = true;
+                *not_exit = false;
+                end = true;
+            }
+            else if (event.key.keysym.sym == SDLK_ESCAPE)
+                end = true;
+        }
+
+        SDL_SetRenderDrawColor(myRenderer, 0x00, 0x00, 0x00, 0xFF);
+        SDL_RenderClear(myRenderer);
+
+        // Display PONG logo
+        SDL_Rect topCenter = { SCREEN_WIDTH / 2 - 200, SCREEN_HEIGHT / 4 - 100, 400, 120};
+        SDL_RenderCopy(myRenderer, logoTexture, NULL, &topCenter);
+
+        SDL_Rect letters;
+
+        int runningTime = SDL_GetTicks();
+        if (runningTime - startTime < 400) {
+           SDL_Rect letters = { SCREEN_WIDTH / 2 - 200, SCREEN_HEIGHT / 4 - 100, 400, 120 };
+        }
+        else if (runningTime - startTime < 800) {
+            if (!sound_played[1]) {
+                Mix_PlayChannel(-1, typingSound, 0);
+                sound_played[1] = true;
+            }
+            SDL_Rect letters = { SCREEN_WIDTH / 2 - 140, SCREEN_HEIGHT / 4 - 100, 340, 120 };
+        }
+        else if (runningTime - startTime < 1200) {
+            if (!sound_played[2]) {
+                Mix_PlayChannel(-1, typingSound, 0);
+                sound_played[2] = true;
+            }
+            SDL_Rect letters = { SCREEN_WIDTH / 2 - 80, SCREEN_HEIGHT / 4 - 100, 280, 120 };
+        }
+        else if (runningTime - startTime < 1600) {
+            if (!sound_played[3]) {
+                Mix_PlayChannel(-1, typingSound, 0);
+                sound_played[3] = true;
+            }
+
+            SDL_Rect letters = { SCREEN_WIDTH / 2 - 20, SCREEN_HEIGHT / 4 - 100, 220, 120 };
+        }
+        else if (runningTime - startTime < 2000) {
+            if (!sound_played[4]) {
+                Mix_PlayChannel(-1, typingSound, 0);
+                sound_played[4] = true;
+            }
+
+            SDL_Rect letters = { SCREEN_WIDTH / 2 + 40, SCREEN_HEIGHT / 4 - 100, 160, 120 };
+        }
+        else if (runningTime - startTime < 2500) {
+            if (!sound_played[5]) {
+                Mix_PlayChannel(-1, typingSound, 0);
+                sound_played[5] = true;
+            }
+
+            SDL_Rect letters = { 0, 0, 0, 0 };
+        }
+        SDL_RenderFillRect(myRenderer, &letters);
+        
+        SDL_RenderPresent(myRenderer);
+
+        if (runningTime - startTime > 2500)
+            end = true;
+    }
 }
 
 int main(void)
