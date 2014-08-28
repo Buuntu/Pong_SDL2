@@ -10,6 +10,7 @@
 #include <SDL2/SDL2_gfxPrimitives.h>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
+#include <SDL2/SDL_mixer.h>
 #include <stdio.h>
 #include <time.h>
 #include <stdlib.h>
@@ -23,6 +24,10 @@
 
 char FONT[] = "Fonts/Square.ttf";
 char FONT2[] = "Fonts/robotastic.ttf";
+
+char hit_sound[] = "Sounds/hit.wav";
+char scroll_sound[] = "Sounds/switch.wav";
+char enter_sound[] = "Sounds/enter.wav";
 
 typedef int bool;
 enum { false, true };
@@ -65,6 +70,8 @@ TTF_Font * logoFont = NULL;             // Font for game title
 TTF_Font * menuFont = NULL;             // Font for menu options
 SDL_Surface * mySurface = NULL;         // Surface for font
 SDL_Texture * loseTexture = NULL;       // Texture for losing message
+SDL_Texture * player1Wins = NULL;       // Texture for player 1 win
+SDL_Texture * player2Wins = NULL;       // Texture for player 2 win
 SDL_Texture * winTexture = NULL;        // Texture for winning message
 SDL_Texture * logoTexture = NULL;       // PONG logo
 SDL_Texture * option1Texture = NULL;    // Option 1 (Menu)
@@ -74,13 +81,17 @@ SDL_Texture * score0 = NULL;            // Scoreboard options
 SDL_Texture * score1 = NULL;            
 SDL_Texture * score2 = NULL;
 SDL_Texture * score3 = NULL;
+// Sound effects
+Mix_Chunk *scrollSound = NULL;
+Mix_Chunk *enterSound = NULL;
+Mix_Chunk *paddleSound = NULL;
 
 bool initScr() {
     // Initialization flag
     bool success = true;
 
     // Initialize SDL
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS) < 0) {
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_AUDIO) < 0) {
         printf("SDL could not initialize! SDL_Error: %s\n", SDL_GetError());
         success = false;
     }
@@ -91,8 +102,13 @@ bool initScr() {
             success = false;
         }
 
+        if ( Mix_OpenAudio( 44100, MIX_DEFAULT_FORMAT, 2, 2048) < 0) {
+            printf("SDL_mixer could not initialize! SDL_mixer Error: %s\n", Mix_GetError() );
+            success = false;
+        }
+
         // Create window
-        myWindow = SDL_CreateWindow("SUPER Pong!", SDL_WINDOWPOS_UNDEFINED,
+        myWindow = SDL_CreateWindow("PONG 2.0", SDL_WINDOWPOS_UNDEFINED,
             SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
         if (myWindow == NULL)
         {
@@ -129,11 +145,15 @@ bool loadMedia() {
     }
     else {
         // Render text
-        SDL_Color textColor = { 255, 255, 255 };
+        SDL_Color textColor = { 0x99, 0x99, 0x66 };
         mySurface = TTF_RenderText_Solid(myFont, "You lose...", textColor);
         loseTexture = SDL_CreateTextureFromSurface(myRenderer,mySurface);
-        mySurface = TTF_RenderText_Solid(myFont, "You win...", textColor);
+        mySurface = TTF_RenderText_Solid(myFont, "You win!", textColor);
         winTexture = SDL_CreateTextureFromSurface(myRenderer,mySurface);
+        mySurface = TTF_RenderText_Solid(myFont, "Player 1 wins!", textColor);
+        player1Wins = SDL_CreateTextureFromSurface(myRenderer, mySurface);
+        mySurface = TTF_RenderText_Solid(myFont, "Player 2 wins!", textColor);
+        player2Wins = SDL_CreateTextureFromSurface(myRenderer, mySurface);
 
         // Render logo
         SDL_Color logoTextColor = { 0x00, 0xCC, 0x00 };
@@ -160,6 +180,15 @@ bool loadMedia() {
         mySurface = TTF_RenderText_Solid(logoFont, "3", menuTextColor);
         score3 = SDL_CreateTextureFromSurface(myRenderer, mySurface);
 
+    }
+
+    // Load music
+    scrollSound = Mix_LoadWAV(scroll_sound);
+    enterSound = Mix_LoadWAV(enter_sound);
+    paddleSound = Mix_LoadWAV(hit_sound);
+    if (scrollSound == NULL || enterSound == NULL || paddleSound == NULL) {
+        printf("Failed to load sound effects! SDL_mixer Error: %s\n", Mix_GetError());
+        success = false;
     }
 
     return success;
@@ -344,6 +373,9 @@ void close_program() {
         score1 = NULL;
         score2 = NULL;
         score3 = NULL;
+        scrollSound = NULL;
+        enterSound = NULL;
+        paddleSound = NULL;
 
         // Free SDL_ttf objects
         TTF_CloseFont(myFont);
@@ -364,6 +396,7 @@ void close_program() {
         SDL_DestroyTexture(score3);
         SDL_FreeSurface(mySurface);
 
+        Mix_Quit();
         SDL_Quit();
 }
 
@@ -383,27 +416,39 @@ bool welcome_screen() {
             }
             if (event.type == SDL_KEYDOWN) {
                 if (menu_option == 0) {
-                    if (event.key.keysym.sym == SDLK_RETURN)
+                    if (event.key.keysym.sym == SDLK_RETURN) {
                         quit = true;
-                    else if (event.key.keysym.sym == SDLK_DOWN)
+                        Mix_PlayChannel(-1, enterSound, 0);
+                    }
+                    else if (event.key.keysym.sym == SDLK_DOWN) {
                         menu_option = 1;
+                        Mix_PlayChannel(-1, scrollSound, 0);
+                    }
                 }
                 else if (menu_option == 1) {
-                    if (event.key.keysym.sym == SDLK_UP)
+                    if (event.key.keysym.sym == SDLK_UP) {
                         menu_option = 0;
-                    else if (event.key.keysym.sym == SDLK_DOWN)
+                        Mix_PlayChannel(-1, scrollSound, 0);
+                    }
+                    else if (event.key.keysym.sym == SDLK_DOWN) {
                         menu_option = 2;
+                        Mix_PlayChannel(-1, scrollSound, 0);
+                    }
                     else if (event.key.keysym.sym == SDLK_RETURN) {
                         multiplayer = true;
                         quit = true;
+                        Mix_PlayChannel(-1, enterSound, 0);
                     }
                 }
                 else if (menu_option == 2) {
-                    if (event.key.keysym.sym == SDLK_UP)
+                    if (event.key.keysym.sym == SDLK_UP) {
                         menu_option = 1;
+                        Mix_PlayChannel(-1, scrollSound, 0);
+                    }
                     else if (event.key.keysym.sym == SDLK_RETURN) {
                         quit = true;
                         not_exit = false;
+                        Mix_PlayChannel(-1, enterSound, 0);
                     }
                 }
             }
@@ -515,6 +560,14 @@ int main(void)
                     someoneScored = true;
                 }
             }
+            // Play sound effects
+            else {
+                if (gameball.x - gameball.radius == gamepaddle.width)
+                    Mix_PlayChannel(-1, paddleSound, 0);
+                else if (gameball.x + gameball.radius == SCREEN_WIDTH - oppo_paddle.width)
+                    Mix_PlayChannel(-1, paddleSound, 0);
+            }
+
 
             // Move left paddle
             if (!have_lost && !have_won && (SDL_GetTicks() - startTime > 1500) ) {
@@ -566,13 +619,23 @@ int main(void)
                     SDL_RenderDrawPoint(myRenderer, SCREEN_WIDTH / 2, i);
 
 
-            SDL_Rect center = { SCREEN_WIDTH / 2 - 75, SCREEN_HEIGHT / 2 - 25, 150, 50};
+            SDL_Rect center = { SCREEN_WIDTH / 2 - 125, SCREEN_HEIGHT / 2 - 25, 250, 50};
+            SDL_Rect center2 = { SCREEN_WIDTH / 2 -150, SCREEN_HEIGHT / 2 - 25, 300, 50};
             // Draw win or lose message
-            if (have_won)
-                SDL_RenderCopy(myRenderer, winTexture, NULL, &center);
-            else if (have_lost)
-                SDL_RenderCopy(myRenderer, loseTexture, NULL, &center);
+            if (have_won) {
+                if (multiplayer)
+                    SDL_RenderCopy(myRenderer, player1Wins, NULL, &center2);
+                else
+                    SDL_RenderCopy(myRenderer, winTexture, NULL, &center);
+            }
+            else if (have_lost) {
+                if (multiplayer)
+                    SDL_RenderCopy(myRenderer, player2Wins, NULL, &center2);
+                else
+                    SDL_RenderCopy(myRenderer, loseTexture, NULL, &center);
+            }
 
+            
             // Draw left paddle
             SDL_Rect leftPaddle = { 0, gamepaddle.y, gamepaddle.width, gamepaddle.height };
             SDL_SetRenderDrawColor(myRenderer, 0x00, 0xCC, 0x00, 0xFF);
