@@ -55,16 +55,17 @@ bool lost(struct paddle *, struct ball *);  // Check if left player has lost
 bool won(struct paddle *, struct ball *);   // Check if left player has won
 bool loadMedia();                           // Load all of the media for the game
 void close_program();                       // Free all pointers and exit
-bool welcome_screen();                      // Main menu
+bool welcome_screen(unsigned int);          // Main menu
 void start_animation(bool *, bool *);       // Logo animation
-void replay_menu();                         // Menu after win/loss
-int calculate_direction(int, int, struct paddle *, int, int);
+int replay_menu();                     // Menu after win/loss
+void restart (struct ball *, struct paddle *, struct paddle *, unsigned int *);  // Reset
+int calculate_direction(int, int, struct paddle *, int, int);   // Calculate computer response
 static bool multiplayer = false;
 
 SDL_Window * myWindow = NULL;           // Window to render to
 SDL_Renderer * myRenderer = NULL;       // Renderer to use
 SDL_Surface * myXout = NULL;            // Exit button
-TTF_Font * myFont = NULL;               // TTF font pointer
+TTF_Font * smallerFont = NULL;          // TTF font
 TTF_Font * logoFont = NULL;             // Font for game title
 TTF_Font * menuFont = NULL;             // Font for menu options
 SDL_Surface * mySurface = NULL;         // Surface for font
@@ -76,6 +77,8 @@ SDL_Texture * logoTexture = NULL;       // PONG logo
 SDL_Texture * option1Texture = NULL;    // Option 1 (Menu)
 SDL_Texture * option2Texture = NULL;    // Option 2 (Menu)
 SDL_Texture * option3Texture = NULL;    // Option 3 (Menu)
+SDL_Texture * replayTexture = NULL;     // Play again?
+SDL_Texture * menuTexture = NULL;       // Main menu?
 SDL_Texture * score0 = NULL;            // Scoreboard options
 SDL_Texture * score1 = NULL;            
 SDL_Texture * score2 = NULL;

@@ -59,23 +59,23 @@ bool loadMedia() {
     bool success = true;
 
     // Open the font
-    myFont = TTF_OpenFont(FONT, 120);
     logoFont = TTF_OpenFont(FONT2, 120);
+    smallerFont = TTF_OpenFont(FONT, 60);
     menuFont = TTF_OpenFont(FONT, 120);
-    if (myFont == NULL || logoFont == NULL) {
+    if (menuFont == NULL || logoFont == NULL) {
         printf("Failed to load font! SDL_ttf Error: %s\n", TTF_GetError());
         success = false;
     }
     else {
         // Render text
         SDL_Color textColor = { 0x99, 0x99, 0x66 , 0xFF};
-        mySurface = TTF_RenderText_Solid(myFont, "You lose...", textColor);
+        mySurface = TTF_RenderText_Solid(smallerFont, "You lose...", textColor);
         loseTexture = SDL_CreateTextureFromSurface(myRenderer,mySurface);
-        mySurface = TTF_RenderText_Solid(myFont, "You win!", textColor);
+        mySurface = TTF_RenderText_Solid(smallerFont, "You win!", textColor);
         winTexture = SDL_CreateTextureFromSurface(myRenderer,mySurface);
-        mySurface = TTF_RenderText_Solid(myFont, "Player 1 wins!", textColor);
+        mySurface = TTF_RenderText_Solid(smallerFont, "Player 1 wins!", textColor);
         player1Wins = SDL_CreateTextureFromSurface(myRenderer, mySurface);
-        mySurface = TTF_RenderText_Solid(myFont, "Player 2 wins!", textColor);
+        mySurface = TTF_RenderText_Solid(smallerFont, "Player 2 wins!", textColor);
         player2Wins = SDL_CreateTextureFromSurface(myRenderer, mySurface);
 
         // Render logo
@@ -93,6 +93,15 @@ bool loadMedia() {
         // Option 3
         mySurface = TTF_RenderText_Solid(menuFont, "Quit", menuTextColor);
         option3Texture = SDL_CreateTextureFromSurface(myRenderer, mySurface);
+
+        // Play again?
+        mySurface = TTF_RenderText_Solid(smallerFont, "Play Again?", menuTextColor);
+        replayTexture = SDL_CreateTextureFromSurface(myRenderer, mySurface);
+
+        // Main menu?
+        mySurface = TTF_RenderText_Solid(smallerFont, "Main Menu", menuTextColor);
+        menuTexture = SDL_CreateTextureFromSurface(myRenderer, mySurface);
+
         // Scoreboard
         mySurface = TTF_RenderText_Solid(logoFont, "0", menuTextColor);
         score0 = SDL_CreateTextureFromSurface(myRenderer, mySurface);
@@ -286,13 +295,14 @@ void close_program() {
         // Free pointers
         myWindow = NULL;
         myRenderer = NULL;
-        myFont = NULL;
+        smallerFont = NULL;
         logoFont = NULL;
         loseTexture = NULL;
         logoTexture = NULL;
         option1Texture = NULL;
         option2Texture = NULL;
         option3Texture = NULL;
+        replayTexture = NULL;
         score0 = NULL;
         score1 = NULL;
         score2 = NULL;
@@ -302,8 +312,9 @@ void close_program() {
         paddleSound = NULL;
 
         // Free SDL_ttf objects
-        TTF_CloseFont(myFont);
+        TTF_CloseFont(smallerFont);
         TTF_CloseFont(logoFont);
+        TTF_CloseFont(menuFont);
         TTF_Quit();
 
         // Free SDL objects
@@ -324,14 +335,16 @@ void close_program() {
         SDL_Quit();
 }
 
-bool welcome_screen() {
+bool welcome_screen(unsigned int animation) {
     SDL_Event event;
 
     bool quit = false;
     bool not_exit = true;
     unsigned int menu_option = 0;
 
-    start_animation(&not_exit, &quit);
+    if (animation)
+        start_animation(&not_exit, &quit);
+
 
     while (!quit) {
         // Handle events
@@ -513,7 +526,77 @@ void start_animation(bool * not_exit, bool * quit) {
     }
 }
 
-void replay() {
+int replay_menu() {
+    bool quit = false;
+    enum { PLAY_AGAIN, MAIN_MENU };
+
+    int option = PLAY_AGAIN;
+    int choice = PLAY_AGAIN;     // Play again? or Main Menu
+
+    SDL_Event event;
+
+    while (!quit) {
+        while(SDL_PollEvent(&event) != 0) {
+            if (event.type == SDL_QUIT) {
+                quit = true;
+                choice = -1;
+            }
+            
+            if (event.type == SDL_KEYDOWN) {
+                if (event.key.keysym.sym == SDLK_DOWN) {
+                    if (option == PLAY_AGAIN)
+                        option++;
+                }
+                else if (event.key.keysym.sym == SDLK_UP) {
+                    if (option == MAIN_MENU)
+                        option--;
+                }
+                else if (event.key.keysym.sym == SDLK_RETURN) {
+                    if (option == PLAY_AGAIN)
+                        choice = PLAY_AGAIN;
+                    else if (option == MAIN_MENU)
+                        choice = MAIN_MENU;
+                    quit = true;
+                }
+            }
+        }
+
+        SDL_SetRenderDrawColor(myRenderer, 0x00, 0x00, 0x00, 0xFF);
+        SDL_Rect middleRect = { SCREEN_WIDTH / 2 - 175, SCREEN_HEIGHT / 2 - 80, 350, 160 };
+        SDL_RenderFillRect(myRenderer, &middleRect);
+
+        SDL_SetRenderDrawColor(myRenderer, 0x00, 0xCC, 0x00, 0xFF);
+        SDL_Rect outline = { SCREEN_WIDTH / 2 - 165, SCREEN_HEIGHT / 2 - 70, 330, 140 };
+        SDL_RenderDrawRect(myRenderer, &outline);
+
+        SDL_Rect option1Rect = { SCREEN_WIDTH / 2 - 115, SCREEN_HEIGHT / 2 - 45, 230, 40 };
+        SDL_Rect option2Rect = { SCREEN_WIDTH / 2 - 115, SCREEN_HEIGHT / 2 + 5, 230, 40 };
+        SDL_SetRenderDrawColor(myRenderer, 0x00, 0x33, 0x00, 0xFF);
+        if (option == PLAY_AGAIN) {
+            SDL_RenderFillRect(myRenderer, &option1Rect);
+        }
+        else if (option == MAIN_MENU) {
+            SDL_RenderFillRect(myRenderer, &option2Rect);
+        }
+
+        SDL_Rect playAgain = { SCREEN_WIDTH / 2 - 110, SCREEN_HEIGHT / 2 - 45, 220, 40 };
+        SDL_Rect mainMenu = { SCREEN_WIDTH / 2 - 95, SCREEN_HEIGHT / 2 + 5, 190, 40 };
+
+        SDL_RenderCopy(myRenderer, menuTexture, NULL, &mainMenu);
+        SDL_RenderCopy(myRenderer, replayTexture, NULL, &playAgain);
+
+        SDL_RenderPresent(myRenderer);
+    }
+
+    return choice;
+}
+
+void restart(struct ball * gameball, struct paddle * leftpaddle, struct paddle * rightpaddle, unsigned int * startTime) {
+    gameball->y = SCREEN_HEIGHT / 2;
+    gameball->x = SCREEN_WIDTH / 2;
+    leftpaddle->y = SCREEN_HEIGHT / 2 - (leftpaddle->height / 2);
+    rightpaddle->y = leftpaddle->y;
+    *startTime = SDL_GetTicks();
 }
 
 int main(void)
@@ -542,7 +625,7 @@ int main(void)
         int rightScore = 0;
         bool someoneScored = false;
 
-        if (!welcome_screen())
+        if (!welcome_screen(1))
             quit = true;
 
         if (multiplayer)
@@ -722,8 +805,26 @@ int main(void)
             SDL_RenderPresent(myRenderer);
 
             // Exit if lost and 2.5 seconds have passed
-            if ((have_lost || have_won) && (SDL_GetTicks() - endTime > 2500)) 
-                quit = true;
+            if ((have_lost || have_won) && (SDL_GetTicks() - endTime > 2500)) {
+                switch (replay_menu()) {
+                    case -1:
+                        quit = true;
+                    case 0:
+                        restart(&gameball, &gamepaddle, &oppo_paddle, &startTime);
+                        leftScore = rightScore = 0;
+                        have_lost = have_won = false;
+                        break;
+                    case 1:
+                        if (!welcome_screen(0))
+                            quit = true;
+                        else {
+                            restart(&gameball, &gamepaddle, &oppo_paddle, &startTime);
+                            leftScore = rightScore = 0;
+                            have_lost = have_won = false;
+                        }
+                        break;
+                }
+            }
         }
 
         close_program();
