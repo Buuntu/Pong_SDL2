@@ -114,13 +114,23 @@ bool loadMedia() {
 
     }
 
-    // Load music
+    // Load sounds 
     scrollSound = Mix_LoadWAV(scroll_sound);
     enterSound = Mix_LoadWAV(enter_sound);
     paddleSound = Mix_LoadWAV(hit_sound);
     typingSound = Mix_LoadWAV(type_sound);
-    if (scrollSound == NULL || enterSound == NULL || paddleSound == NULL || typingSound == NULL) {
+    winSound = Mix_LoadWAV(win_sound);
+    lossSound = Mix_LoadWAV(loss_sound);
+    if (scrollSound == NULL || enterSound == NULL || paddleSound == NULL || typingSound == NULL 
+         || winSound == NULL || lossSound == NULL) {
         printf("Failed to load sound effects! SDL_mixer Error: %s\n", Mix_GetError());
+        success = false;
+    }
+
+    // Load music
+    menuMusic = Mix_LoadMUS(music);
+    if (menuMusic == NULL) {
+        printf("Failed to load music! SDL_mixer Error: %s\n", Mix_GetError());
         success = false;
     }
 
@@ -310,6 +320,15 @@ void close_program() {
         scrollSound = NULL;
         enterSound = NULL;
         paddleSound = NULL;
+        menuMusic = NULL;
+
+        // Free SDL_Mixer pointers
+        Mix_FreeChunk(scrollSound);
+        Mix_FreeChunk(enterSound);
+        Mix_FreeChunk(paddleSound);
+
+        // Free music
+        Mix_FreeMusic(menuMusic);
 
         // Free SDL_ttf objects
         TTF_CloseFont(smallerFont);
@@ -344,7 +363,6 @@ bool welcome_screen(unsigned int animation) {
 
     if (animation)
         start_animation(&not_exit, &quit);
-
 
     while (!quit) {
         // Handle events
@@ -393,6 +411,9 @@ bool welcome_screen(unsigned int animation) {
             }
         }
 
+        if ( Mix_PlayingMusic() == 0 )
+            Mix_PlayMusic(menuMusic, -1);
+
         SDL_SetRenderDrawColor(myRenderer, 0x00, 0x00, 0x00, 0xFF);
         SDL_RenderClear(myRenderer);
 
@@ -426,6 +447,9 @@ bool welcome_screen(unsigned int animation) {
         // Draw screen:
         SDL_RenderPresent(myRenderer);
     }
+    
+    // Stop the music and exit
+    Mix_HaltMusic();    
 
     return not_exit;
 }
@@ -544,18 +568,23 @@ int replay_menu() {
             
             if (event.type == SDL_KEYDOWN) {
                 if (event.key.keysym.sym == SDLK_DOWN) {
-                    if (option == PLAY_AGAIN)
+                    if (option == PLAY_AGAIN) {
+                        Mix_PlayChannel(-1, scrollSound, 0);
                         option++;
+                    }
                 }
                 else if (event.key.keysym.sym == SDLK_UP) {
-                    if (option == MAIN_MENU)
+                    if (option == MAIN_MENU) {
+                        Mix_PlayChannel(-1, scrollSound, 0);
                         option--;
+                    }
                 }
                 else if (event.key.keysym.sym == SDLK_RETURN) {
                     if (option == PLAY_AGAIN)
                         choice = PLAY_AGAIN;
                     else if (option == MAIN_MENU)
                         choice = MAIN_MENU;
+                    Mix_PlayChannel(-1, enterSound, 0);
                     quit = true;
                 }
             }
@@ -649,6 +678,10 @@ int main(void)
                 // Increment score and check if you've lost
                 if (++rightScore == 3) {
                     have_lost = true;;
+                    if (multiplayer)
+                        Mix_PlayChannel(-1, winSound, 0);
+                    else
+                        Mix_PlayChannel(-1, lossSound, 0);
                     endTime = SDL_GetTicks();
                 }
                 else {
@@ -660,6 +693,7 @@ int main(void)
                 // Increment score and check if you've won
                 if (++leftScore == 3) {
                     have_won = true;
+                    Mix_PlayChannel(-1, winSound, 0);
                     endTime = SDL_GetTicks();
                 }
                 else {

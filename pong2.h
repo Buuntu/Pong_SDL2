@@ -25,6 +25,9 @@ char hit_sound[] = "Sounds/hit.wav";
 char scroll_sound[] = "Sounds/switch.wav";
 char enter_sound[] = "Sounds/enter.wav";
 char type_sound[] = "Sounds/keystroke.wav";
+char win_sound[] = "Sounds/success-2.wav";
+char loss_sound[] = "Sounds/game-over.wav";
+char music[] = "Sounds/game_music_7.wav";
 
 typedef int bool;
 enum { false, true };
@@ -89,5 +92,9 @@ Mix_Chunk *scrollSound = NULL;
 Mix_Chunk *enterSound = NULL;
 Mix_Chunk *paddleSound = NULL;
 Mix_Chunk *typingSound = NULL;
+Mix_Chunk *lossSound = NULL;
+Mix_Chunk *winSound = NULL;
+// Music
+Mix_Music * menuMusic = NULL;
 
 #endif
